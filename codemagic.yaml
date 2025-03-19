@@ -8,13 +8,11 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.ahmetfaruk
-        additional_bundle_identifiers: com.ahmetfaruk.notificationsvc
       vars:
         BUNDLE_ID: "com.ahmetfaruk"
         XCODE_WORKSPACE: "OceanPulse.xcworkspace" # <-- Put the name of your Xcode workspace here
         XCODE_SCHEME: "OceanPulse" # <-- Put the name of your Xcode scheme here
         APP_STORE_APPLE_ID: 6743439976
-        APPLE_PUSH_ENTITLEMENT: true
       xcode: 16.0
     scripts:
       - name: Set up provisioning profiles settings on Xcode project
