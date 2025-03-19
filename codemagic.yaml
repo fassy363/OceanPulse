@@ -13,7 +13,7 @@ workflows:
         XCODE_WORKSPACE: "OceanPulse.xcworkspace"
         XCODE_SCHEME: "OceanPulse"
         APP_STORE_APPLE_ID: 6743439976
-    xcode: 16.0
+      xcode: 16.0  # Переміщено сюди, в розділ environment
     scripts:
       - name: Діагностика налаштувань Push Notifications
         script: |
