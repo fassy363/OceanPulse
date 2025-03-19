@@ -8,6 +8,7 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.ahmetfaruk
+        additional_bundle_identifiers: com.ahmetfaruk.notificationsvc
       vars:
         BUNDLE_ID: "com.ahmetfaruk"
         XCODE_WORKSPACE: "OceanPulse.xcworkspace" # <-- Put the name of your Xcode workspace here
