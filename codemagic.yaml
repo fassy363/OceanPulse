@@ -2,32 +2,32 @@ workflows:
   ios-native-workflow:
     name: iOS Native
     max_build_duration: 120
+    instance_type: mac_mini_m1
     integrations:
       app_store_connect: CodeMagic Api Key
     environment:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.ahmetfaruk
+        # Цей параметр вказує, що Codemagic має автоматично керувати профілями для всіх таргетів
+        auto_codesigning: true
       vars:
-        BUNDLE_ID: "com.ahmetfaruk"
+        BUNDLE_ID: "com.ahmetfaruk" 
         XCODE_WORKSPACE: "OceanPulse.xcworkspace"
         XCODE_SCHEME: "OceanPulse"
         APP_STORE_APPLE_ID: 6743439976
-      xcode: 16.0  # Переміщено сюди, в розділ environment
+      xcode: 16.0
     scripts:
-      - name: Діагностика налаштувань Push Notifications
+      - name: Огляд налаштувань таргетів
         script: |
-          echo "=== Діагностика Push Notifications ==="
-          echo "Пошук файлів entitlements:"
-          find . -name "*.entitlements" -exec echo "Файл: {}" \; -exec cat {} \;
-          echo "Перевірка налаштувань Push у проекті:"
-          grep -r "com.apple.Push" . || echo "Push конфігурацію не знайдено в файлах проекту"
-          echo "Перевірка профілю підписування:"
-          security find-identity -v -p codesigning || echo "Профілі підписування не знайдено"
-          echo "=== Кінець діагностики ==="
+          echo "=== Огляд налаштувань таргетів ==="
+          xcodebuild -list -workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE"
+          echo "=== Кінець огляду ==="
       
-      - name: Set up provisioning profiles settings on Xcode project
-        script: xcode-project use-profiles
+      - name: Set up automatic code signing
+        script: |
+          echo "Налаштування автоматичного підписування..."
+          xcode-project use-profiles --auto
       
       - name: Increment build number
         script: |
@@ -35,34 +35,12 @@ workflows:
           LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID")
           agvtool new-version -all $(($LATEST_BUILD_NUMBER + 1))
       
-      - name: Аналітика збірки
-        script: |
-          echo "=== Аналітика збірки ==="
-          echo "Версія Xcode: $(xcodebuild -version)"
-          echo "Налаштування проекту:"
-          xcodebuild -workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" -scheme "$XCODE_SCHEME" -showBuildSettings | grep -E 'PRODUCT_BUNDLE_IDENTIFIER|CODE_SIGN_ENTITLEMENTS|CODE_SIGN_IDENTITY'
-          echo "Перевірка capabilities проекту:"
-          plutil -p "$CM_BUILD_DIR/$XCODE_SCHEME.xcodeproj/project.pbxproj" | grep -i capability || echo "Capabilities не знайдено в проекті"
-          echo "=== Кінець аналітики ==="
-      
       - name: Build ipa for distribution
         script: |
           xcode-project build-ipa \
           --workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" \
-          --scheme "$XCODE_SCHEME"
-      
-      - name: Аналіз логів збірки
-        script: |
-          echo "=== Аналіз логів збірки ==="
-          if [ -d "/tmp/xcodebuild_logs" ]; then
-            echo "Пошук помилок, пов'язаних з push-повідомленнями:"
-            grep -i "push\|notification\|entitlement\|capability" /tmp/xcodebuild_logs/* || echo "Помилок push-повідомлень не знайдено"
-            echo "Пошук загальних помилок:"
-            grep -i "error\|warning\|fail" /tmp/xcodebuild_logs/* | head -50
-          else
-            echo "Папка з логами не знайдена"
-          fi
-          echo "=== Кінець аналізу логів ==="
+          --scheme "$XCODE_SCHEME" \
+          --auto-codesign
     
     artifacts:
       - build/ios/ipa/*.ipa
