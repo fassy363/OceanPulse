@@ -25,7 +25,8 @@ workflows:
       - name: Автоматичне налаштування профілів підписування
         script: |
           echo "Налаштування автоматичного підписування..."
-          xcode-project use-profiles --generate
+          # Використовуємо команду без додаткових опцій
+          xcode-project use-profiles
       
       - name: Increment build number
         script: |
@@ -37,7 +38,34 @@ workflows:
         script: |
           xcode-project build-ipa \
           --workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" \
-          --scheme "$XCODE_SCHEME"
+          --scheme "$XCODE_SCHEME" \
+          --export-options-plist=/tmp/export_options.plist
+
+      - name: Підготовка export options для всіх необхідних таргетів
+        script: |
+          cat > /tmp/export_options.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.ahmetfaruk</key>
+              <string>match AppStore com.ahmetfaruk</string>
+              <key>com.ahmetfaruk.notificationsvc</key>
+              <string>match AppStore com.ahmetfaruk.notificationsvc</string>
+            </dict>
+          </dict>
+          </plist>
+          EOF
     
     artifacts:
       - build/ios/ipa/*.ipa
