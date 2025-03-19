@@ -10,28 +10,66 @@ workflows:
         bundle_identifier: com.ahmetfaruk
       vars:
         BUNDLE_ID: "com.ahmetfaruk"
-        XCODE_WORKSPACE: "OceanPulse.xcworkspace" # <-- Put the name of your Xcode workspace here
-        XCODE_SCHEME: "OceanPulse" # <-- Put the name of your Xcode scheme here
+        XCODE_WORKSPACE: "OceanPulse.xcworkspace"
+        XCODE_SCHEME: "OceanPulse"
         APP_STORE_APPLE_ID: 6743439976
-      xcode: 16.0
+    xcode: 16.0
     scripts:
+      - name: Діагностика налаштувань Push Notifications
+        script: |
+          echo "=== Діагностика Push Notifications ==="
+          echo "Пошук файлів entitlements:"
+          find . -name "*.entitlements" -exec echo "Файл: {}" \; -exec cat {} \;
+          echo "Перевірка налаштувань Push у проекті:"
+          grep -r "com.apple.Push" . || echo "Push конфігурацію не знайдено в файлах проекту"
+          echo "Перевірка профілю підписування:"
+          security find-identity -v -p codesigning || echo "Профілі підписування не знайдено"
+          echo "=== Кінець діагностики ==="
+      
       - name: Set up provisioning profiles settings on Xcode project
         script: xcode-project use-profiles
+      
       - name: Increment build number
         script: |
           cd $CM_BUILD_DIR
           LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID")
           agvtool new-version -all $(($LATEST_BUILD_NUMBER + 1))
+      
+      - name: Аналітика збірки
+        script: |
+          echo "=== Аналітика збірки ==="
+          echo "Версія Xcode: $(xcodebuild -version)"
+          echo "Налаштування проекту:"
+          xcodebuild -workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" -scheme "$XCODE_SCHEME" -showBuildSettings | grep -E 'PRODUCT_BUNDLE_IDENTIFIER|CODE_SIGN_ENTITLEMENTS|CODE_SIGN_IDENTITY'
+          echo "Перевірка capabilities проекту:"
+          plutil -p "$CM_BUILD_DIR/$XCODE_SCHEME.xcodeproj/project.pbxproj" | grep -i capability || echo "Capabilities не знайдено в проекті"
+          echo "=== Кінець аналітики ==="
+      
       - name: Build ipa for distribution
         script: |
           xcode-project build-ipa \
-            --workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" \
-            --scheme "$XCODE_SCHEME"
+          --workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" \
+          --scheme "$XCODE_SCHEME"
+      
+      - name: Аналіз логів збірки
+        script: |
+          echo "=== Аналіз логів збірки ==="
+          if [ -d "/tmp/xcodebuild_logs" ]; then
+            echo "Пошук помилок, пов'язаних з push-повідомленнями:"
+            grep -i "push\|notification\|entitlement\|capability" /tmp/xcodebuild_logs/* || echo "Помилок push-повідомлень не знайдено"
+            echo "Пошук загальних помилок:"
+            grep -i "error\|warning\|fail" /tmp/xcodebuild_logs/* | head -50
+          else
+            echo "Папка з логами не знайдена"
+          fi
+          echo "=== Кінець аналізу логів ==="
+    
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
       - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
       - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+    
     publishing:
       email:
         recipients:
@@ -41,9 +79,5 @@ workflows:
           failure: false
       app_store_connect:
         auth: integration
-        # Configuration related to TestFlight (optional)
-        # Note: This action is performed during post-processing.
         submit_to_testflight: false
-        # Configuration related to App Store (optional)
-        # Note: This action is performed during post-processing.
         submit_to_app_store: false
