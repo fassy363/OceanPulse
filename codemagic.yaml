@@ -9,8 +9,6 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.ahmetfaruk
-        # Цей параметр вказує, що Codemagic має автоматично керувати профілями для всіх таргетів
-        auto_codesigning: true
       vars:
         BUNDLE_ID: "com.ahmetfaruk" 
         XCODE_WORKSPACE: "OceanPulse.xcworkspace"
@@ -24,10 +22,10 @@ workflows:
           xcodebuild -list -workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE"
           echo "=== Кінець огляду ==="
       
-      - name: Set up automatic code signing
+      - name: Автоматичне налаштування профілів підписування
         script: |
           echo "Налаштування автоматичного підписування..."
-          xcode-project use-profiles --auto
+          xcode-project use-profiles --generate
       
       - name: Increment build number
         script: |
@@ -39,8 +37,7 @@ workflows:
         script: |
           xcode-project build-ipa \
           --workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" \
-          --scheme "$XCODE_SCHEME" \
-          --auto-codesign
+          --scheme "$XCODE_SCHEME"
     
     artifacts:
       - build/ios/ipa/*.ipa
